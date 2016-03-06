@@ -453,6 +453,7 @@ public abstract class EC2Cloud extends Cloud {
                 }), t.getNumExecutors()));
 
                 excessWorkload -= t.getNumExecutors();
+                break;
             }
             LOGGER.log(Level.INFO, "Attempting provision - finished, excess workload: " + excessWorkload);
             return r;
