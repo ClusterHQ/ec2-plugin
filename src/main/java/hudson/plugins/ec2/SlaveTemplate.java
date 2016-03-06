@@ -535,23 +535,26 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                         EC2Cloud.EC2_SLAVE_TYPE_DEMAND, description)));
             }
 
-            DescribeInstancesRequest diRequest = new DescribeInstancesRequest();
-            diRequest.setFilters(diFilters);
-
-            logProvision(logger, "Looking for existing instances with describe-instance: " + diRequest);
-
-            DescribeInstancesResult diResult = ec2.describeInstances(diRequest);
             EC2AbstractSlave[] ec2Node = new EC2AbstractSlave[1];
             Instance existingInstance = null;
-            reservationLoop: for (Reservation reservation : diResult.getReservations()) {
-                for (Instance instance : reservation.getInstances()) {
-                    if (checkInstance(logger, instance, ec2Node)) {
-                        existingInstance = instance;
-                        logProvision(logger, "Found existing instance: " + existingInstance + ((ec2Node[0] != null) ? (" node: " + ec2Node[0].getInstanceId()) : ""));
-                        break reservationLoop;
+            if (false) {
+                DescribeInstancesRequest diRequest = new DescribeInstancesRequest();
+                diRequest.setFilters(diFilters);
+
+                logProvision(logger, "Looking for existing instances with describe-instance: " + diRequest);
+
+                DescribeInstancesResult diResult = ec2.describeInstances(diRequest);
+                reservationLoop: for (Reservation reservation : diResult.getReservations()) {
+                    for (Instance instance : reservation.getInstances()) {
+                        if (checkInstance(logger, instance, ec2Node)) {
+                            existingInstance = instance;
+                            logProvision(logger, "Found existing instance: " + existingInstance + ((ec2Node[0] != null) ? (" node: " + ec2Node[0].getInstanceId()) : ""));
+                            break reservationLoop;
+                        }
                     }
                 }
             }
+
 
             if (existingInstance == null) {
                 if (!allowCreateNew) {
