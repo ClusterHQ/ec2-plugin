@@ -427,17 +427,26 @@ public abstract class EC2Cloud extends Cloud {
             List<PlannedNode> r = new ArrayList<PlannedNode>();
             final SlaveTemplate t = getTemplate(label);
 
-            while (excessWorkload > 0) {
-                LOGGER.log(Level.FINE, "Attempting provision, excess workload: " + excessWorkload);
+            int possibleSlavesCount = getPossibleNewSlavesCount(t);
+            if (possibleSlavesCount <= 0) {
+                LOGGER.log(Level.INFO, "Cannot provision - no capacity for instances: " + possibleSlavesCount);
+            }
 
-                final EC2AbstractSlave slave = provisionSlaveIfPossible(t);
-                // Returned null if a new node could not be created
-                if (slave == null)
-                    break;
-                Hudson.getInstance().addNode(slave);
+            int toProvision = Math.min(excessWorkload, possibleSlavesCount);
+
+            while (toProvision > 0) {
+                LOGGER.log(Level.FINE, "Attempting provision, excess workload: " + excessWorkload + ", to provision: " + toProvision);
+
                 r.add(new PlannedNode(t.getDisplayName(), Computer.threadPoolForRemoting.submit(new Callable<Node>() {
 
                     public Node call() throws Exception {
+                        final EC2AbstractSlave slave = t.provision(StreamTaskListener.fromStdout(), true);
+                        // Returned null if a new node could not be created
+                        if (slave == null) {
+                            throw new Exception("Whi");
+                        }
+
+                        Hudson.getInstance().addNode(slave);
                         try {
                             slave.toComputer().connect(false).get();
                         } catch (Exception e) {
@@ -452,15 +461,12 @@ public abstract class EC2Cloud extends Cloud {
                     }
                 }), t.getNumExecutors()));
 
+                toProvision -= t.getNumExecutors();
                 excessWorkload -= t.getNumExecutors();
-                break;
             }
             LOGGER.log(Level.INFO, "Attempting provision - finished, excess workload: " + excessWorkload);
             return r;
         } catch (AmazonClientException e) {
-            LOGGER.log(Level.WARNING, "Exception during provisioning", e);
-            return Collections.emptyList();
-        } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Exception during provisioning", e);
             return Collections.emptyList();
         }
